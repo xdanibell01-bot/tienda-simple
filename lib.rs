@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("");
+declare_id!("8s3G4sJ1sVv9yYz7WJ6K7d3w4TnA5qM8p9R2xY6zQ1aB"); // ejemplo
 
 #[program]
 pub mod tienda_simple {
@@ -8,10 +8,16 @@ pub mod tienda_simple {
 
     // Crear tienda
     pub fn crear_tienda(ctx: Context<CrearTienda>, nombre: String) -> Result<()> {
+
+        require!(nombre.len() <= 50, ErrorCodigo::NombreMuyLargo);
+
         let tienda = &mut ctx.accounts.tienda;
+
         tienda.owner = ctx.accounts.owner.key();
         tienda.nombre = nombre;
         tienda.productos = Vec::new();
+        tienda.bump = ctx.bumps.tienda;
+
         Ok(())
     }
 
@@ -23,11 +29,18 @@ pub mod tienda_simple {
         stock: u16,
     ) -> Result<()> {
 
+        require!(nombre.len() <= 50, ErrorCodigo::NombreMuyLargo);
+
         let tienda = &mut ctx.accounts.tienda;
 
         require!(
             tienda.owner == ctx.accounts.owner.key(),
             ErrorCodigo::NoEresOwner
+        );
+
+        require!(
+            tienda.productos.len() < 20,
+            ErrorCodigo::LimiteProductos
         );
 
         let nuevo_tenis = Tenis {
@@ -37,6 +50,7 @@ pub mod tienda_simple {
         };
 
         tienda.productos.push(nuevo_tenis);
+
         Ok(())
     }
 
@@ -55,6 +69,7 @@ pub mod tienda_simple {
         let tienda = &mut ctx.accounts.tienda;
 
         for i in 0..tienda.productos.len() {
+
             if tienda.productos[i].nombre == nombre {
 
                 require!(
@@ -63,6 +78,7 @@ pub mod tienda_simple {
                 );
 
                 tienda.productos[i].stock -= 1;
+
                 msg!("Compra exitosa!");
                 return Ok(());
             }
@@ -74,6 +90,7 @@ pub mod tienda_simple {
 
 #[error_code]
 pub enum ErrorCodigo {
+
     #[msg("No eres el dueño de la tienda")]
     NoEresOwner,
 
@@ -82,20 +99,29 @@ pub enum ErrorCodigo {
 
     #[msg("El producto no existe")]
     ProductoNoExiste,
+
+    #[msg("Nombre demasiado largo")]
+    NombreMuyLargo,
+
+    #[msg("Limite de productos alcanzado")]
+    LimiteProductos,
 }
 
 #[account]
 pub struct Tienda {
-    pub owner: Pubkey,
-    pub nombre: String,
-    pub productos: Vec<Tenis>,
+
+    pub owner: Pubkey,        // 32
+    pub nombre: String,       // 4 + 50
+    pub productos: Vec<Tenis>,// 4 + (max productos)
+    pub bump: u8,             // 1
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct Tenis {
-    pub nombre: String,
-    pub precio: u64,
-    pub stock: u16,
+
+    pub nombre: String, // 4 + 50
+    pub precio: u64,    // 8
+    pub stock: u16,     // 2
 }
 
 #[derive(Accounts)]
@@ -107,7 +133,17 @@ pub struct CrearTienda<'info> {
     #[account(
         init,
         payer = owner,
-        space = 1000,
+
+        // 8 discriminator
+        // 32 owner
+        // 4 + 50 nombre
+        // 4 vec length
+        // 20 productos max
+        // cada tenis = 4 + 50 + 8 + 2 = 64 aprox
+        // 20 * 64 = 1280
+        // + bump
+        space = 8 + 32 + 54 + 4 + (20 * 64) + 1,
+
         seeds = [b"tienda", owner.key().as_ref()],
         bump
     )]
@@ -125,7 +161,7 @@ pub struct ModificarTienda<'info> {
     #[account(
         mut,
         seeds = [b"tienda", owner.key().as_ref()],
-        bump
+        bump = tienda.bump
     )]
     pub tienda: Account<'info, Tienda>,
 }
