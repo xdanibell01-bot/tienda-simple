@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("8s3G4sJ1sVv9yYz7WJ6K7d3w4TnA5qM8p9R2xY6zQ1aB"); // ejemplo
+declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkgMQHgqE3s7P");
 
 #[program]
 pub mod tienda_simple {
