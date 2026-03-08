@@ -6,7 +6,7 @@ declare_id!("");
 pub mod tienda_simple {
     use super::*;
 
-    // 1️⃣ Crear tienda
+    // Crear tienda
     pub fn crear_tienda(ctx: Context<CrearTienda>, nombre: String) -> Result<()> {
         let tienda = &mut ctx.accounts.tienda;
         tienda.owner = ctx.accounts.owner.key();
@@ -15,7 +15,7 @@ pub mod tienda_simple {
         Ok(())
     }
 
-    // 2️⃣ Agregar tenis
+    // Agregar tenis
     pub fn agregar_tenis(
         ctx: Context<ModificarTienda>,
         nombre: String,
@@ -40,13 +40,13 @@ pub mod tienda_simple {
         Ok(())
     }
 
-    // 3️⃣ Ver tenis
+    // Ver tenis
     pub fn ver_tenis(ctx: Context<ModificarTienda>) -> Result<()> {
         msg!("Lista de tenis: {:#?}", ctx.accounts.tienda.productos);
         Ok(())
     }
 
-    // 4️⃣ Comprar tenis
+    // Comprar tenis
     pub fn comprar_tenis(
         ctx: Context<ModificarTienda>,
         nombre: String,
@@ -72,8 +72,6 @@ pub mod tienda_simple {
     }
 }
 
-//////////////////////////////////// ERRORES ////////////////////////////////////
-
 #[error_code]
 pub enum ErrorCodigo {
     #[msg("No eres el dueño de la tienda")]
@@ -86,16 +84,12 @@ pub enum ErrorCodigo {
     ProductoNoExiste,
 }
 
-//////////////////////////////////// CUENTA TIENDA ///////////////////////////////
-
 #[account]
 pub struct Tienda {
     pub owner: Pubkey,
     pub nombre: String,
     pub productos: Vec<Tenis>,
 }
-
-//////////////////////////////////// STRUCT TENIS ////////////////////////////////
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct Tenis {
@@ -104,15 +98,19 @@ pub struct Tenis {
     pub stock: u16,
 }
 
-//////////////////////////////////// CONTEXTOS ///////////////////////////////////
-
 #[derive(Accounts)]
 pub struct CrearTienda<'info> {
 
     #[account(mut)]
     pub owner: Signer<'info>,
 
-    #[account(init, payer = owner, space = 1000)]
+    #[account(
+        init,
+        payer = owner,
+        space = 1000,
+        seeds = [b"tienda", owner.key().as_ref()],
+        bump
+    )]
     pub tienda: Account<'info, Tienda>,
 
     pub system_program: Program<'info, System>,
@@ -124,6 +122,10 @@ pub struct ModificarTienda<'info> {
     #[account(mut)]
     pub owner: Signer<'info>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [b"tienda", owner.key().as_ref()],
+        bump
+    )]
     pub tienda: Account<'info, Tienda>,
 }
